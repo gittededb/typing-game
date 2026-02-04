@@ -547,7 +547,7 @@
                 if (!this.active) return;
                 
                 // Prevent default for letter keys
-                if (e.key.length === 1 && e.key.match(/[a-z]/i)) {
+                if (e.key.length === 1 && (e.key.match(/[a-z]/i) || e.key === ';')) {
                     e.preventDefault();
                     this.onInput(e.key.toUpperCase());
                 }
