@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyboard Learning Game</title>
+    <style>
+        :root {
+            --color-cream-50: rgba(252, 252, 249, 1);
+            --color-cream-100: rgba(255, 255, 253, 1);
+            --color-slate-900: rgba(19, 52, 59, 1);
+            --color-slate-500: rgba(98, 108, 113, 1);
+            --color-teal-500: rgba(33, 128, 141, 1);
+            --color-teal-600: rgba(29, 116, 128, 1);
+            --color-brown-600-rgb: 94, 82, 64;
+            --color-teal-500-rgb: 33, 128, 141;
+            --color-red-500: rgba(192, 21, 47, 1);
+            --color-red-400: rgba(255, 84, 89, 1);
+            
+            --color-background: var(--color-cream-50);
+            --color-surface: var(--color-cream-100);
+            --color-text: var(--color-slate-900);
+            --color-text-secondary: var(--color-slate-500);
+            --color-primary: var(--color-teal-500);
+            --color-primary-hover: var(--color-teal-600);
+            --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+            --color-error: var(--color-red-500);
+            --color-success: var(--color-teal-500);
+            
+            --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --radius-base: 8px;
+            --radius-lg: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-charcoal-700: rgba(31, 33, 33, 1);
+                --color-charcoal-800: rgba(38, 40, 40, 1);
+                --color-gray-200: rgba(245, 245, 245, 1);
+                --color-gray-300: rgba(167, 169, 169, 1);
+                --color-gray-400-rgb: 119, 124, 124;
+                --color-teal-300: rgba(50, 184, 198, 1);
+                
+                --color-background: var(--color-charcoal-700);
+                --color-surface: var(--color-charcoal-800);
+                --color-text: var(--color-gray-200);
+                --color-text-secondary: rgba(var(--color-gray-300), 0.7);
+                --color-primary: var(--color-teal-300);
+                --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+                --color-error: var(--color-red-400);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            background: var(--color-background);
+            color: var(--color-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--color-surface);
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .level-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .level-btn {
+            padding: 8px 16px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            color: var(--color-text);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .level-btn:hover {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .level-btn.active {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        /* Main Game Area */
+        .game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 20px;
+            background: var(--color-surface);
+            padding: 15px 25px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--color-text);
+            margin-top: 4px;
+        }
+
+        /* Level 1a: Flash Letter Display */
+        .flash-letter-container {
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--color-border);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .flash-letter-container.error {
+            background: var(--color-error);
+            transform: scale(0.95);
+        }
+
+        .flash-letter-container.success {
+            background: var(--color-success);
+            transform: scale(1.05);
+        }
+
+        .flash-letter {
+            font-size: 120px;
+            font-weight: 700;
+            color: var(--color-text);
+            animation: fadeIn 0.3s;
+        }
+
+        .flash-letter-container.error .flash-letter {
+            color: white;
+        }
+
+        .flash-letter-container.success .flash-letter {
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Level 1b: Sequential Typing */
+        .sequential-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .letter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 15px;
+            width: 100%;
+            padding: 20px;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--color-border);
+        }
+
+        .letter-box {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-background);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-base);
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--color-text);
+            transition: all 0.2s;
+        }
+
+        .letter-box.current {
+            border-color: var(--color-primary);
+            background: rgba(var(--color-teal-500-rgb), 0.1);
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px rgba(var(--color-teal-500-rgb), 0.2);
+        }
+
+        .letter-box.completed {
+            background: var(--color-success);
+            color: white;
+            border-color: var(--color-success);
+        }
+
+        .letter-box.error {
+            background: var(--color-error);
+            color: white;
+            border-color: var(--color-error);
+            animation: shake 0.3s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Timer Display */
+        .timer-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .timer-display.warning {
+            color: var(--color-error);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-base);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--color-primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--color-surface);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+        }
+
+        /* Instructions */
+        .instructions {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 18px;
+            color: var(--color-text-secondary);
+        }
+
+        /* Results Screen */
+        .results-screen {
+            background: var(--color-surface);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--color-border);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .results-screen h2 {
+            font-size: 32px;
+            margin-bottom: 30px;
+            color: var(--color-text);
+        }
+
+        .result-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+
+        .result-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .result-stat-label {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+        }
+
+        .result-stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        /* Hidden state */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-bar {
+                position: static;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .flash-letter-container {
+                width: 250px;
+                height: 250px;
+            }
+
+            .flash-letter {
+                font-size: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>⌨️ Keyboard Learning</h1>
+        <div class="level-selector">
+            <button class="level-btn active" data-level="1a">Level 1a</button>
+            <button class="level-btn" data-level="1b">Level 1b</button>
+            <button class="level-btn" data-level="1c" disabled style="opacity: 0.5;">Level 1c (Coming Soon)</button>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div class="game-container">
+        <!-- Stats Bar (shown in level 1b) -->
+        <div class="stats-bar hidden" id="statsBar">
+            <div class="stat-item">
+                <div class="stat-label">Score</div>
+                <div class="stat-value" id="scoreDisplay">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="accuracyDisplay">100%</div>
+            </div>
+        </div>
+
+        <!-- Level 1a: Flash Single Letter -->
+        <div id="level1a" class="hidden">
+            <div class="instructions">Type the letter shown</div>
+            <div class="flash-letter-container" id="flashContainer">
+                <div class="flash-letter" id="flashLetter">A</div>
+            </div>
+            <div class="controls">
+                <button class="btn" id="startBtn1a">Start</button>
+            </div>
+        </div>
+
+        <!-- Level 1b: Sequential Typing -->
+        <div id="level1b" class="hidden">
+            <div class="instructions">Type all letters in order as fast as you can!</div>
+            <div class="timer-display" id="timerDisplay">30</div>
+            <div class="sequential-container">
+                <div class="letter-grid" id="letterGrid"></div>
+            </div>
+            <div class="controls">
+                <button class="btn" id="startBtn1b">Start</button>
+                <button class="btn btn-secondary hidden" id="resetBtn1b">Reset</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="results-screen hidden">
+            <h2>🎉 Level Complete!</h2>
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="result-stat-label">Score</div>
+                    <div class="result-stat-value" id="finalScore">0</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-label">Accuracy</div>
+                    <div class="result-stat-value" id="finalAccuracy">100%</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-label">Time</div>
+                    <div class="result-stat-value" id="finalTime">0s</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn" id="playAgainBtn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // CORE ENGINE ARCHITECTURE
+        // ============================================================================
+        
+        /**
+         * InputHandler: Manages keyboard events and validates input
+         * EXTENSION POINT: Add touch/mouse support, special key handling
+         */
+        class InputHandler {
+            constructor(onInput) {
+                this.onInput = onInput;
+                this.active = false;
+            }
+
+            activate() {
+                this.active = true;
+                document.addEventListener('keydown', this.handleKeyDown);
+            }
+
+            deactivate() {
+                this.active = false;
+                document.removeEventListener('keydown', this.handleKeyDown);
+            }
+
+            handleKeyDown = (e) => {
+                if (!this.active) return;
+                
+                // Prevent default for letter keys
+                if (e.key.length === 1 && e.key.match(/[a-z]/i)) {
+                    e.preventDefault();
+                    this.onInput(e.key.toUpperCase());
+                }
+            }
+        }
+
+        /**
+         * StimulusManager: Controls what is displayed to the user
+         * EXTENSION POINT: Add image stimuli, audio cues, word banks
+         */
+        class StimulusManager {
+            constructor(config) {
+                this.config = config;
+                this.currentStimulus = null;
+            }
+
+            getNextStimulus() {
+                // Currently: random letter from set
+                // FUTURE: word selection, difficulty scaling, spaced repetition
+                const letters = this.config.letterSet;
+                this.currentStimulus = letters[Math.floor(Math.random() * letters.length)];
+                return this.currentStimulus;
+            }
+
+            getCurrentStimulus() {
+                return this.currentStimulus;
+            }
+        }
+
+        /**
+         * FeedbackSystem: Provides visual/audio feedback
+         * EXTENSION POINT: Add sound effects, haptic feedback, animation variations
+         */
+        class FeedbackSystem {
+            constructor(container) {
+                this.container = container;
+            }
+
+            showSuccess() {
+                this.container.classList.remove('error');
+                this.container.classList.add('success');
+                setTimeout(() => {
+                    this.container.classList.remove('success');
+                }, 300);
+            }
+
+            showError() {
+                this.container.classList.remove('success');
+                this.container.classList.add('error');
+                setTimeout(() => {
+                    this.container.classList.remove('error');
+                }, 500);
+            }
+
+            // FUTURE: addAudioFeedback(), addHapticFeedback()
+        }
+
+        /**
+         * AnalyticsEngine: Tracks performance metrics
+         * EXTENSION POINT: Error pattern analysis, typing speed calculation, progress persistence
+         */
+        class AnalyticsEngine {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.correct = 0;
+                this.incorrect = 0;
+                this.totalTime = 0;
+                this.startTime = null;
+                // FUTURE: keyPressTimings[], errorPatterns{}, difficultyScore
+            }
+
+            recordCorrect() {
+                this.correct++;
+                this.updateDisplays();
+            }
+
+            recordIncorrect() {
+                this.incorrect++;
+                this.updateDisplays();
+            }
+
+            startTimer() {
+                this.startTime = Date.now();
+            }
+
+            stopTimer() {
+                if (this.startTime) {
+                    this.totalTime = Math.floor((Date.now() - this.startTime) / 1000);
+                }
+            }
+
+            getAccuracy() {
+                const total = this.correct + this.incorrect;
+                return total === 0 ? 100 : Math.round((this.correct / total) * 100);
+            }
+
+            getScore() {
+                return this.correct;
+            }
+
+            updateDisplays() {
+                const scoreEl = document.getElementById('scoreDisplay');
+                const accuracyEl = document.getElementById('accuracyDisplay');
+                if (scoreEl) scoreEl.textContent = this.getScore();
+                if (accuracyEl) accuracyEl.textContent = this.getAccuracy() + '%';
+            }
+        }
+
+        /**
+         * ProgressionLogic: Manages level transitions and unlocking
+         * EXTENSION POINT: Adaptive difficulty, achievement system, save/load progress
+         */
+        class ProgressionLogic {
+            constructor() {
+                this.completedLevels = new Set();
+                // FUTURE: Load from localStorage or cloud sync
+            }
+
+            completeLevel(levelId) {
+                this.completedLevels.add(levelId);
+                // FUTURE: Unlock next level, save to persistence layer
+            }
+
+            isLevelUnlocked(levelId) {
+                // Currently: all levels unlocked
+                // FUTURE: Sequential unlocking based on performance
+                return true;
+            }
+        }
+
+        // ============================================================================
+        // LEVEL CONFIGURATIONS
+        // ============================================================================
+        
+        const LEVEL_CONFIGS = {
+            '1a': {
+                id: '1a',
+                name: 'Flash Letters',
+                type: 'flash-single',
+                letterSet: ['A', 'S', 'D', 'F'],
+                duration: null, // No time limit
+                feedbackDuration: 500
+            },
+            '1b': {
+                id: '1b',
+                name: 'Sequential Typing',
+                type: 'sequential',
+                letterSet: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                duration: 30, // 30 seconds
+                timerWarningThreshold: 10
+            }
+            // FUTURE: Level 1c config with cueType, wordBank, mediaAssets
+        };
+
+        // ============================================================================
+        // GAME STATE MANAGER
+        // ============================================================================
+        
+        class GameStateManager {
+            constructor() {
+                this.currentLevel = '1a';
+                this.gameActive = false;
+                this.inputHandler = new InputHandler(this.handleInput.bind(this));
+                this.analytics = new AnalyticsEngine();
+                this.progression = new ProgressionLogic();
+                
+                this.initializeLevels();
+                this.attachEventListeners();
+            }
+
+            initializeLevels() {
+                // Show Level 1a by default
+                this.switchLevel('1a');
+            }
+
+            attachEventListeners() {
+                // Level switching
+                document.querySelectorAll('.level-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const level = e.target.dataset.level;
+                        if (level && !e.target.disabled) {
+                            this.switchLevel(level);
+                        }
+                    });
+                });
+
+                // Start buttons
+                document.getElementById('startBtn1a')?.addEventListener('click', () => this.startLevel1a());
+                document.getElementById('startBtn1b')?.addEventListener('click', () => this.startLevel1b());
+                document.getElementById('resetBtn1b')?.addEventListener('click', () => this.resetLevel1b());
+                document.getElementById('playAgainBtn')?.addEventListener('click', () => this.playAgain());
+            }
+
+            switchLevel(levelId) {
+                // Hide all levels
+                document.querySelectorAll('[id^="level"]').forEach(el => el.classList.add('hidden'));
+                document.getElementById('resultsScreen')?.classList.add('hidden');
+                
+                // Update active button
+                document.querySelectorAll('.level-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.level === levelId);
+                });
+
+                // Show selected level
+                const levelEl = document.getElementById(`level${levelId}`);
+                if (levelEl) {
+                    levelEl.classList.remove('hidden');
+                    this.currentLevel = levelId;
+                    this.gameActive = false;
+                    this.inputHandler.deactivate();
+                }
+
+                // Hide/show stats bar based on level
+                const statsBar = document.getElementById('statsBar');
+                if (levelId === '1b') {
+                    statsBar.classList.remove('hidden');
+                } else {
+                    statsBar.classList.add('hidden');
+                }
+
+                this.analytics.reset();
+            }
+
+            // ========================================================================
+            // LEVEL 1a: Flash Single Letter
+            // ========================================================================
+            
+            startLevel1a() {
+                const config = LEVEL_CONFIGS['1a'];
+                const container = document.getElementById('flashContainer');
+                const letterEl = document.getElementById('flashLetter');
+                const startBtn = document.getElementById('startBtn1a');
+
+                startBtn.disabled = true;
+                this.gameActive = true;
+                this.analytics.reset();
+                this.analytics.startTimer();
+
+                const stimulusManager = new StimulusManager(config);
+                const feedbackSystem = new FeedbackSystem(container);
+
+                // Display first letter
+                const showNextLetter = () => {
+                    if (!this.gameActive) return;
+                    const letter = stimulusManager.getNextStimulus();
+                    letterEl.textContent = letter;
+                };
+
+                showNextLetter();
+
+                // Handle input
+                this.inputHandler.onInput = (key) => {
+                    if (!this.gameActive) return;
+
+                    const expected = stimulusManager.getCurrentStimulus();
+                    if (key === expected) {
+                        this.analytics.recordCorrect();
+                        feedbackSystem.showSuccess();
+                        setTimeout(showNextLetter, 300);
+                    } else {
+                        this.analytics.recordIncorrect();
+                        feedbackSystem.showError();
+                    }
+                };
+
+                this.inputHandler.activate();
+            }
+
+            // ========================================================================
+            // LEVEL 1b: Sequential Typing
+            // ========================================================================
+            
+            startLevel1b() {
+                const config = LEVEL_CONFIGS['1b'];
+                const gridEl = document.getElementById('letterGrid');
+                const timerEl = document.getElementById('timerDisplay');
+                const startBtn = document.getElementById('startBtn1b');
+                const resetBtn = document.getElementById('resetBtn1b');
+
+                startBtn.classList.add('hidden');
+                resetBtn.classList.remove('hidden');
+                
+                this.gameActive = true;
+                this.analytics.reset();
+                this.analytics.startTimer();
+
+                // Shuffle letters for variety
+                const letters = [...config.letterSet].sort(() => Math.random() - 0.5);
+                
+                // Create letter grid
+                gridEl.innerHTML = '';
+                letters.forEach((letter, index) => {
+                    const box = document.createElement('div');
+                    box.className = 'letter-box';
+                    box.textContent = letter;
+                    box.dataset.index = index;
+                    box.dataset.letter = letter;
+                    gridEl.appendChild(box);
+                });
+
+                // Mark first letter as current
+                let currentIndex = 0;
+                gridEl.children[0].classList.add('current');
+
+                // Timer countdown
+                let timeLeft = config.duration;
+                timerEl.textContent = timeLeft;
+                
+                const timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = timeLeft;
+                    
+                    if (timeLeft <= config.timerWarningThreshold) {
+                        timerEl.classList.add('warning');
+                    }
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        this.endLevel1b();
+                    }
+                }, 1000);
+
+                // Handle input
+                this.inputHandler.onInput = (key) => {
+                    if (!this.gameActive) return;
+
+                    const currentBox = gridEl.children[currentIndex];
+                    const expectedLetter = currentBox.dataset.letter;
+
+                    if (key === expectedLetter) {
+                        this.analytics.recordCorrect();
+                        currentBox.classList.remove('current');
+                        currentBox.classList.add('completed');
+
+                        currentIndex++;
+
+                        // Check if completed all letters
+                        if (currentIndex >= letters.length) {
+                            clearInterval(timerInterval);
+                            this.endLevel1b();
+                        } else {
+                            gridEl.children[currentIndex].classList.add('current');
+                        }
+                    } else {
+                        this.analytics.recordIncorrect();
+                        currentBox.classList.add('error');
+                        setTimeout(() => {
+                            currentBox.classList.remove('error');
+                        }, 300);
+                    }
+                };
+
+                this.inputHandler.activate();
+                this.level1bTimer = timerInterval;
+            }
+
+            endLevel1b() {
+                this.gameActive = false;
+                this.inputHandler.deactivate();
+                this.analytics.stopTimer();
+                
+                if (this.level1bTimer) {
+                    clearInterval(this.level1bTimer);
+                }
+
+                // Show results
+                this.showResults();
+            }
+
+            resetLevel1b() {
+                if (this.level1bTimer) {
+                    clearInterval(this.level1bTimer);
+                }
+                
+                this.gameActive = false;
+                this.inputHandler.deactivate();
+                
+                const timerEl = document.getElementById('timerDisplay');
+                timerEl.classList.remove('warning');
+                timerEl.textContent = LEVEL_CONFIGS['1b'].duration;
+
+                const startBtn = document.getElementById('startBtn1b');
+                const resetBtn = document.getElementById('resetBtn1b');
+                startBtn.classList.remove('hidden');
+                resetBtn.classList.add('hidden');
+
+                const gridEl = document.getElementById('letterGrid');
+                gridEl.innerHTML = '';
+                
+                this.analytics.reset();
+            }
+
+            // ========================================================================
+            // Results Display
+            // ========================================================================
+            
+            showResults() {
+                document.getElementById(`level${this.currentLevel}`).classList.add('hidden');
+                document.getElementById('statsBar').classList.add('hidden');
+                
+                const resultsScreen = document.getElementById('resultsScreen');
+                resultsScreen.classList.remove('hidden');
+
+                document.getElementById('finalScore').textContent = this.analytics.getScore();
+                document.getElementById('finalAccuracy').textContent = this.analytics.getAccuracy() + '%';
+                document.getElementById('finalTime').textContent = this.analytics.totalTime + 's';
+
+                this.progression.completeLevel(this.currentLevel);
+            }
+
+            playAgain() {
+                document.getElementById('resultsScreen').classList.add('hidden');
+                this.switchLevel(this.currentLevel);
+            }
+
+            handleInput(key) {
+                // Input is routed through inputHandler.onInput callback
+                // This method exists for future centralized input handling
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZE APPLICATION
+        // ============================================================================
+        
+        const game = new GameStateManager();
+
+        // FUTURE EXTENSION POINTS:
+        // - Add ConfigurationPanel for cue type selection (visual/audio/text)
+        // - Add ProgressDashboard for long-term stat tracking
+        // - Add ContentLoader for dynamic word banks and media assets
+        // - Add CloudSync for cross-device progress
+        // - Add AdaptiveDifficulty based on error patterns
+    </script>
+</body>
+</html>
+
