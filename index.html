@@ -379,6 +379,52 @@
                 font-size: 100px;
             }
         }
+                /* PATCH: Level 1a controls and countdown */
+        .mode-selector {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            color: var(--color-text-secondary);
+        }
+
+        .mode-selector select {
+            padding: 6px 10px;
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-size: 14px;
+        }
+
+        .press-status {
+            margin-top: 12px;
+            font-size: 16px;
+            color: var(--color-text-secondary);
+        }
+
+        .countdown-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 10;
+        }
+
+        .countdown-number {
+            font-size: 80px;
+            font-weight: 800;
+            color: white;
+            animation: fadeIn 0.4s;
+        }
+
+        .countdown-number.go {
+            font-size: 72px;
+            color: var(--color-primary);
+        }
     </style>
 </head>
 <body>
@@ -409,13 +455,32 @@
         <!-- Level 1a: Flash Single Letter -->
         <div id="level1a" class="hidden">
             <div class="instructions">Type the letter shown</div>
+
+            <!-- PATCH: Hand set selector -->
+            <div class="mode-selector">
+                <label for="handSetSelector1a">Hand set:</label>
+                <select id="handSetSelector1a">
+                    <option value="left">ASDF (Left hand)</option>
+                    <option value="right">JKL; (Right hand)</option>
+                </select>
+            </div>
+
+            <!-- PATCH: Countdown overlay container -->
             <div class="flash-letter-container" id="flashContainer">
                 <div class="flash-letter" id="flashLetter">A</div>
+                <div class="countdown-overlay hidden" id="countdownOverlay1a">
+                    <div class="countdown-number" id="countdownNumber1a">5</div>
+                </div>
             </div>
+
+            <!-- PATCH: Press status -->
+            <div class="press-status" id="pressStatus1a">Press 0 of 20</div>
+
             <div class="controls">
                 <button class="btn" id="startBtn1a">Start</button>
             </div>
         </div>
+
 
         <!-- Level 1b: Sequential Typing -->
         <div id="level1b" class="hidden">
@@ -616,6 +681,131 @@
             }
         }
 
+        /**
+         * Level1aController: Manages Level 1a session (hand set, presses, countdown)
+         */
+        class Level1aController {
+            constructor({ config, analytics, inputHandler, onComplete }) {
+                this.config = config;
+                this.analytics = analytics;
+                this.inputHandler = inputHandler;
+                this.onComplete = onComplete;
+
+                this.pressCount = 0;
+                this.maxPresses = config.maxPresses;
+
+                this.flashContainer = document.getElementById('flashContainer');
+                this.flashLetterEl = document.getElementById('flashLetter');
+                this.pressStatusEl = document.getElementById('pressStatus1a');
+                this.handSetSelector = document.getElementById('handSetSelector1a');
+                this.countdownOverlay = document.getElementById('countdownOverlay1a');
+                this.countdownNumberEl = document.getElementById('countdownNumber1a');
+
+                this.currentLetterSet = config.handSets[config.defaultHandSet];
+                this.currentStimulus = null;
+                this.isActive = false;
+            }
+
+            start() {
+                // Determine hand set from selector
+                const mode = this.handSetSelector?.value || this.config.defaultHandSet;
+                this.currentLetterSet = this.config.handSets[mode] || this.config.handSets[this.config.defaultHandSet];
+
+                this.pressCount = 0;
+                this.updatePressStatus();
+                this.analytics.reset();
+
+                // Countdown before activating input
+                this.runCountdown(() => {
+                    this.analytics.startTimer();
+                    this.isActive = true;
+                    this.showNextLetter();
+                    this.inputHandler.onInput = (key) => this.handleKey(key);
+                    this.inputHandler.activate();
+                });
+            }
+
+            runCountdown(onDone) {
+                if (!this.countdownOverlay || !this.countdownNumberEl) {
+                    onDone();
+                    return;
+                }
+
+                const sequence = ['5', '4', '3', '2', '1', 'GO'];
+                let index = 0;
+
+                this.countdownOverlay.classList.remove('hidden');
+
+                const step = () => {
+                    const value = sequence[index];
+                    this.countdownNumberEl.textContent = value;
+                    this.countdownNumberEl.classList.toggle('go', value === 'GO');
+
+                    index++;
+                    if (index < sequence.length) {
+                        setTimeout(step, 700);
+                    } else {
+                        // hide overlay and start game
+                        setTimeout(() => {
+                            this.countdownOverlay.classList.add('hidden');
+                            this.countdownNumberEl.classList.remove('go');
+                            onDone();
+                        }, 500);
+                    }
+                };
+
+                step();
+            }
+
+            showNextLetter() {
+                if (!this.isActive) return;
+                const letters = this.currentLetterSet;
+                this.currentStimulus = letters[Math.floor(Math.random() * letters.length)];
+                this.flashLetterEl.textContent = this.currentStimulus;
+            }
+
+            updatePressStatus() {
+                if (this.pressStatusEl) {
+                    this.pressStatusEl.textContent = `Press ${this.pressCount} of ${this.maxPresses}`;
+                }
+            }
+
+            handleKey(key) {
+                if (!this.isActive) return;
+
+                // Count this press
+                this.pressCount++;
+                this.updatePressStatus();
+
+                const expected = this.currentStimulus;
+                const feedbackSystem = new FeedbackSystem(this.flashContainer);
+
+                if (key === expected) {
+                    this.analytics.recordCorrect();
+                    feedbackSystem.showSuccess();
+                } else {
+                    this.analytics.recordIncorrect();
+                    feedbackSystem.showError();
+                }
+
+                if (this.pressCount >= this.maxPresses) {
+                    this.finish();
+                } else {
+                    setTimeout(() => this.showNextLetter(), 300);
+                }
+            }
+
+            finish() {
+                this.isActive = false;
+                this.inputHandler.deactivate();
+                this.analytics.stopTimer();
+                if (typeof this.onComplete === 'function') {
+                    this.onComplete();
+                }
+            }
+        }
+
+
         // ============================================================================
         // LEVEL CONFIGURATIONS
         // ============================================================================
@@ -625,10 +815,16 @@
                 id: '1a',
                 name: 'Flash Letters',
                 type: 'flash-single',
-                letterSet: ['A', 'S', 'D', 'F'],
-                duration: null, // No time limit
+                // PATCH: configurable hand sets and finite trial count
+                handSets: {
+                    left: ['A', 'S', 'D', 'F'],
+                    right: ['J', 'K', 'L', ';']
+                },
+                defaultHandSet: 'left',
+                maxPresses: 20,
                 feedbackDuration: 500
             },
+
             '1b': {
                 id: '1b',
                 name: 'Sequential Typing',
@@ -651,6 +847,7 @@
                 this.inputHandler = new InputHandler(this.handleInput.bind(this));
                 this.analytics = new AnalyticsEngine();
                 this.progression = new ProgressionLogic();
+                this.levelController = null; // PATCH: active level controller
                 
                 this.initializeLevels();
                 this.attachEventListeners();
@@ -709,50 +906,35 @@
                 this.analytics.reset();
             }
 
-            // ========================================================================
-            // LEVEL 1a: Flash Single Letter
+                        // ========================================================================
+            // LEVEL 1a: Flash Single Letter (hand sets, finite presses, countdown)
             // ========================================================================
             
             startLevel1a() {
                 const config = LEVEL_CONFIGS['1a'];
-                const container = document.getElementById('flashContainer');
-                const letterEl = document.getElementById('flashLetter');
                 const startBtn = document.getElementById('startBtn1a');
 
-                startBtn.disabled = true;
+                if (startBtn) {
+                    startBtn.disabled = true;
+                    setTimeout(() => { startBtn.disabled = false; }, 5000); // prevent spam during countdown
+                }
+
                 this.gameActive = true;
-                this.analytics.reset();
-                this.analytics.startTimer();
 
-                const stimulusManager = new StimulusManager(config);
-                const feedbackSystem = new FeedbackSystem(container);
-
-                // Display first letter
-                const showNextLetter = () => {
-                    if (!this.gameActive) return;
-                    const letter = stimulusManager.getNextStimulus();
-                    letterEl.textContent = letter;
-                };
-
-                showNextLetter();
-
-                // Handle input
-                this.inputHandler.onInput = (key) => {
-                    if (!this.gameActive) return;
-
-                    const expected = stimulusManager.getCurrentStimulus();
-                    if (key === expected) {
-                        this.analytics.recordCorrect();
-                        feedbackSystem.showSuccess();
-                        setTimeout(showNextLetter, 300);
-                    } else {
-                        this.analytics.recordIncorrect();
-                        feedbackSystem.showError();
+                // Create dedicated controller for Level 1a
+                this.levelController = new Level1aController({
+                    config,
+                    analytics: this.analytics,
+                    inputHandler: this.inputHandler,
+                    onComplete: () => {
+                        this.gameActive = false;
+                        this.showResults();
                     }
-                };
+                });
 
-                this.inputHandler.activate();
+                this.levelController.start();
             }
+
 
             // ========================================================================
             // LEVEL 1b: Sequential Typing
